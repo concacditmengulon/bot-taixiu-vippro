@@ -1,25 +1,22 @@
 const { Telegraf, Markup } = require('telegraf');
 const { readFileSync, writeFileSync, existsSync } = require('fs');
 const fetch = require('node-fetch');
-const { HttpsProxyAgent } = require('https-proxy-agent'); // Use for HTTP/HTTPS proxy
+const { HttpsProxyAgent } = require('https-proxy-agent');
 
 // --- Configuration ---
-const BOT_TOKEN = '7804059790:AAEFHgjLvJrBfSYUA3WPCEqspJUhVHBafXM'; // Replace with your Telegram Bot Token
-const ADMIN_ID = 6781092017; // Replace with your admin Telegram User ID
-const API_URL = 'https://sunai.onrender.com/api/taixiu/sunwin'; // Ensure this API is active
-const API_INTERVAL = 3000; // Fetch API every 3 seconds
+const BOT_TOKEN = 'YOUR_BOT_TOKEN_HERE'; // Thay bằng token từ BotFather
+const ADMIN_ID = YOUR_ADMIN_ID_HERE; // Thay bằng ID Telegram của admin
+const API_URL = 'https://sunai.onrender.com/api/taixiu/sunwin'; // Đảm bảo API hoạt động
+const API_INTERVAL = 3000; // 3 giây
 
 // --- Proxy Configuration (Optional) ---
-// Uncomment and configure one of these if you need a proxy. Leave as null if not used.
-// For HTTP/HTTPS Proxy: Replace with your proxy details (e.g., 'http://user:pass@proxy_ip:port')
-const PROXY_URL = null; // Set to 'http://user:pass@proxy_ip:port' or null if no proxy
+// Để trống hoặc đặt null nếu không dùng proxy
+const PROXY_URL = null; // Ví dụ: 'http://user:pass@proxy_ip:port' nếu dùng proxy
 
-// --- Initialize Bot with Proxy (if configured) ---
+// --- Initialize Bot ---
 let bot;
 if (PROXY_URL && PROXY_URL.startsWith('http')) {
-    bot = new Telegraf(BOT_TOKEN, {
-        telegram: { agent: new HttpsProxyAgent(PROXY_URL) }
-    });
+    bot = new Telegraf(BOT_TOKEN, { telegram: { agent: new HttpsProxyAgent(PROXY_URL) } });
     console.log(`Bot started with HTTP Proxy: ${PROXY_URL}`);
 } else {
     bot = new Telegraf(BOT_TOKEN);
@@ -32,13 +29,13 @@ const USERS_FILE = 'users.json';
 const PREDICTION_HISTORY_FILE = 'prediction_history.json';
 
 // --- In-Memory Data ---
-let keys = {}; // { "key_code": { uses: int, maxUses: int, expiresAt: timestamp, creatorId: int } }
-let users = {}; // { "user_id": { active: boolean, keyUsed: string, isAdmin: boolean } }
-let predictionHistory = []; // History of API predictions
-let currentApiData = null; // Latest API data
-let lastDisplayedSession = null; // Last displayed session
-let apiIntervalId; // Interval ID for API fetching
-let isBotRunning = false; // Bot running state
+let keys = {};
+let users = { [ADMIN_ID]: { active: true, keyUsed: 'admin', isAdmin: true } };
+let predictionHistory = [];
+let currentApiData = null;
+let lastDisplayedSession = null;
+let apiIntervalId;
+let isBotRunning = false;
 
 // --- File Operations ---
 function loadData(filePath, defaultData) {
@@ -63,7 +60,7 @@ function saveData(filePath, data) {
 
 // --- Load Initial Data ---
 keys = loadData(KEYS_FILE, {});
-users = loadData(USERS_FILE, { [ADMIN_ID]: { active: true, keyUsed: 'admin', isAdmin: true } });
+users = loadData(USERS_FILE, users);
 predictionHistory = loadData(PREDICTION_HISTORY_FILE, []);
 
 // --- Helper Functions ---
@@ -87,9 +84,9 @@ function useKey(key) {
 
 function sendBroadcastMessage(message) {
     for (const userId in users) {
-        if (users[userId].active) {
+        if (users[userId]?.active) {
             bot.telegram.sendMessage(userId, message, { parse_mode: 'Markdown' }).catch(e => {
-                console.error(`Could not send to ${userId}:`, e.message);
+                console.error(`Failed to send to ${userId}:`, e.message);
                 if (e.message.includes('bot was blocked')) {
                     users[userId].active = false;
                     saveData(USERS_FILE, users);
@@ -102,13 +99,13 @@ function sendBroadcastMessage(message) {
 function formatPredictionData(data) {
     if (!data) return "Không có dữ liệu dự đoán.";
     const { Phien, Ket_qua, Xuc_xac_1, Xuc_xac_2, Xuc_xac_3, Phien_hien_tai, du_doan, Pattern } = data;
-    const DICE = `${Xuc_xac_1} - ${Xuc_xac_2} - ${Xuc_xac_3}`;
+    const DICE = `${Xuc_xac_1 || 0} - ${Xuc_xac_2 || 0} - ${Xuc_xac_3 || 0}`;
     return `
 🎰 *TOOL SUNWIN V1 😘😘*
 ═════════════════════════════
 *PHIÊN TRƯỚC*: ${Phien || 'N/A'}
 *KẾT QUẢ*: ${Ket_qua || 'N/A'}
-*DICE*: ${DICE || 'N/A'}
+*DICE*: ${DICE}
 ═════════════════════════════ 
 *PHIÊN HIỆN TẠI*: ${Phien_hien_tai || 'N/A'}
 *DỰ ĐOÁN*: ${du_doan || 'N/A'}
@@ -120,7 +117,7 @@ function formatPredictionData(data) {
 async function fetchAndProcessApiData() {
     try {
         const response = await fetch(API_URL);
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
         const data = await response.json();
 
         if (data.Phien_hien_tai && data.Phien_hien_tai !== lastDisplayedSession) {
@@ -130,15 +127,15 @@ async function fetchAndProcessApiData() {
             predictionHistory.push({
                 timestamp: new Date().toISOString(),
                 session: data.Phien_hien_tai,
-                data: data
+                data
             });
             saveData(PREDICTION_HISTORY_FILE, predictionHistory);
 
             const message = formatPredictionData(data);
             for (const userId in users) {
-                if (users[userId].active && users[userId].keyUsed) {
+                if (users[userId]?.active && users[userId].keyUsed) {
                     bot.telegram.sendMessage(userId, message, { parse_mode: 'Markdown' }).catch(e => {
-                        console.error(`Could not send to ${userId}:`, e.message);
+                        console.error(`Failed to send to ${userId}:`, e.message);
                         if (e.message.includes('bot was blocked')) {
                             users[userId].active = false;
                             saveData(USERS_FILE, users);
@@ -181,7 +178,7 @@ bot.command('key', (ctx) => {
     const userKey = args[0];
 
     if (!userKey) return ctx.reply('Nhập /key <key_của_bạn>');
-    if (users[userId].keyUsed) return ctx.reply('Bot đã kích hoạt.');
+    if (users[userId]?.keyUsed) return ctx.reply('Bot đã kích hoạt.');
     if (isValidKey(userKey)) {
         useKey(userKey);
         users[userId].keyUsed = userKey;
@@ -197,7 +194,7 @@ bot.command('chaybot', async (ctx) => {
     const userId = ctx.from.id;
     if (!isAdmin(userId) && (!users[userId] || !users[userId].keyUsed)) return ctx.reply('Kích hoạt bằng /key <key> trước.');
     if (isBotRunning) return ctx.reply('Bot đã chạy.');
-    
+
     isBotRunning = true;
     users[userId].active = true;
     saveData(USERS_FILE, users);
@@ -218,7 +215,7 @@ bot.command('chaybot', async (ctx) => {
 bot.command('tatbot', (ctx) => {
     const userId = ctx.from.id;
     if (!isAdmin(userId) && (!users[userId] || !users[userId].keyUsed)) return ctx.reply('Bạn chưa kích hoạt bot.');
-    
+
     users[userId].active = false;
     saveData(USERS_FILE, users);
 
