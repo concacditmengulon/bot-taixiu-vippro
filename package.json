@@ -1,19 +1,26 @@
 {
-  "name": "sunwin-bot",
+  "name": "telegram-sunwin-bot",
   "version": "1.0.0",
-  "description": "A Telegram bot for Sunwin predictions",
-  "main": "index.js",
+  "description": "Telegram bot for Sunwin Taixiu predictions with proxy support.",
+  "main": "bot.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node bot.js"
   },
-  "engines": {
-    "node": ">=22.16.0"
-  },
-  "dependencies": {
-    "telegraf": "^4.12.2",
-    "node-fetch": "^3.3.2",
-    "https-proxy-agent": "^7.0.2"
-  },
+  "keywords": [
+    "telegram",
+    "bot",
+    "telegraf",
+    "sunwin",
+    "taixiu",
+    "proxy"
+  ],
   "author": "Your Name",
-  "license": "MIT"
+  "license": "ISC",
+  "dependencies": {
+    "https-proxy-agent": "^7.0.4",
+    "node-fetch": "^2.7.0",
+    "socks-proxy-agent": "^8.0.2",
+    "telegraf": "^4.16.1"
+  }
 }
+
