@@ -1,18 +1,20 @@
 {
-  "name": "sunwin-telegram-bot",
+  "name": "sunwin-bot",
   "version": "1.0.0",
   "description": "A Telegram bot for Sunwin predictions",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
-  "author": "Your Name",
-  "license": "ISC",
+  "engines": {
+    "node": ">=22.16.0"
+  },
   "dependencies": {
-    "node-fetch": "^2.6.1",
-    "telegraf": "^4.16.1",
-    "https-proxy-agent": "^5.0.0",
-    "socks-proxy-agent": "^6.0.0"
-  }
+    "telegraf": "^4.12.2",
+    "node-fetch": "^3.3.2",
+    "https-proxy-agent": "^7.0.2"
+  },
+  "author": "Your Name",
+  "license": "MIT"
 }
